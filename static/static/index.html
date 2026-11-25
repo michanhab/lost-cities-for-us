@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>ロストシティ オンライン | 2人対戦カードゲーム</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800;900&family=Cinzel:wght@700;900&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+  <!-- アプリコンテナ -->
+  <div id="app" class="app-container">
+
+    <!-- ========== LOBBY SCREEN ========== -->
+    <div id="lobbyScreen" class="screen active">
+      <div class="lobby-header">
+        <div class="logo-badge">EXPLORATION CARD BATTLE</div>
+        <h1 class="game-title">LOST CITIES<br><span class="jp-sub">ロストシティ オンライン</span></h1>
+        <p class="tagline">5つの秘境を探検し、投資と決断で勝利を掴め！</p>
+      </div>
+
+      <div class="lobby-card">
+        <div class="player-name-section">
+          <label for="playerNameInput">あなたのプレイヤー名</label>
+          <div class="input-with-random">
+            <input type="text" id="playerNameInput" maxlength="10" placeholder="探検家" value="探検家">
+            <button id="randomNameBtn" class="btn-icon" title="ランダムな名前">🎲</button>
+          </div>
+        </div>
+
+        <div class="menu-buttons">
+          <button id="passAndPlayBtn" class="btn btn-pass-play btn-large">
+            <span class="btn-icon-lead">📱</span>
+            <div class="btn-text-group">
+              <span class="btn-main-text">1台のスマホで対面対戦</span>
+              <span class="btn-sub-text">サーバー不要！1台の端末を交互に渡して遊ぶ</span>
+            </div>
+          </button>
+
+          <button id="createRoomBtn" class="btn btn-primary btn-large">
+            <span class="btn-icon-lead">🏰</span>
+            <div class="btn-text-group">
+              <span class="btn-main-text">友達と対戦（ルーム作成）</span>
+              <span class="btn-sub-text">招待URLを発行してLINE等で招待（標準3ラウンド制）</span>
+            </div>
+          </button>
+
+          <button id="randomMatchBtn" class="btn btn-accent btn-large">
+            <span class="btn-icon-lead">⚡</span>
+            <div class="btn-text-group">
+              <span class="btn-main-text">ランダム対戦（マッチング）</span>
+              <span class="btn-sub-text">全国のプレイヤーと対戦（標準3ラウンド制）</span>
+            </div>
+          </button>
+
+          <button id="cpuMatchBtn" class="btn btn-secondary btn-large">
+            <span class="btn-icon-lead">🤖</span>
+            <div class="btn-text-group">
+              <span class="btn-main-text">CPUと練習対戦（1人プレイ）</span>
+              <span class="btn-sub-text">いつでもすぐに遊べるAI練習モード（3ラウンド制）</span>
+            </div>
+          </button>
+        </div>
+
+        <div class="join-room-section">
+          <label>ルームコードで参加</label>
+          <div class="join-input-group">
+            <input type="text" id="joinRoomCodeInput" placeholder="6桁のコード" maxlength="6">
+            <button id="joinRoomBtn" class="btn btn-outline">参加する</button>
+          </div>
+        </div>
+
+        <div class="mobile-connect-banner">
+          <button id="mobileConnectBtn" class="btn btn-outline btn-full btn-small">
+            <span>📱 iPhone・スマホで開く（QRコード）</span>
+          </button>
+        </div>
+
+        <div class="lobby-footer-actions">
+          <button id="tutorialBtn" class="btn btn-text">🔰 遊び方・チュートリアル</button>
+          <button id="rulesBtn" class="btn btn-text">📜 詳しいルールと得点計算</button>
+          <button id="statsBtn" class="btn btn-text">📊 戦績・履歴</button>
+          <button id="settingsBtn" class="btn btn-text">⚙️ 設定</button>
+        </div>
+      </div>
+
+      <div class="version-badge">v1.0.0 Online Full Edition</div>
+    </div>
+
+    <!-- ========== WAITING ROOM SCREEN ========== -->
+    <div id="waitingScreen" class="screen">
+      <div class="waiting-card">
+        <div class="waiting-spinner"></div>
+        <h2>対戦相手を待っています...</h2>
+        <p class="waiting-subtext">友達に以下のURLを送って招待してください</p>
+
+        <div class="room-code-display">
+          <span class="code-label">ルームコード</span>
+          <span id="displayRoomCode" class="code-value">------</span>
+        </div>
+
+        <div class="invite-url-box">
+          <input type="text" id="inviteUrlInput" readonly>
+          <button id="copyUrlBtn" class="btn btn-small btn-primary">URLコピー</button>
+        </div>
+
+        <div class="share-actions">
+          <a id="lineShareBtn" href="#" target="_blank" class="btn btn-line">
+            <span>💬 LINEで友達を招待</span>
+          </a>
+        </div>
+
+        <button id="cancelWaitBtn" class="btn btn-outline btn-full">ロビーへ戻る</button>
+      </div>
+    </div>
+
+    <!-- ========== GAME SCREEN ========== -->
+    <div id="gameScreen" class="screen">
+      
+      <!-- トップステータスバー (相手情報 & 山札 & スコア) -->
+      <header class="game-header">
+        <div class="player-badge opp-badge" id="oppBadge">
+          <div class="avatar opp-avatar">👤</div>
+          <div class="badge-info">
+            <div class="badge-name" id="oppName">相手</div>
+            <div class="badge-score"><span id="oppCumulativeScore">0</span> <small>pts</small></div>
+          </div>
+          <div class="hand-card-counter" title="相手の手札枚数">
+            🂠 <span id="oppHandCount">8</span>
+          </div>
+        </div>
+
+        <div class="center-round-info">
+          <div class="round-indicator">R <span id="currentRoundNum">1</span>/<span id="maxRoundNum">3</span></div>
+          <div class="deck-counter" id="deckCounterBadge">
+            <span class="deck-icon">🎴</span>
+            <span class="deck-label">山札</span>
+            <span id="deckRemainCount" class="deck-number">44</span>
+          </div>
+          <div id="timerBadge" class="timer-badge hidden">⏱ <span id="timerSeconds">30</span>s</div>
+        </div>
+
+        <div class="player-badge my-badge" id="myBadge">
+          <div class="badge-info text-right">
+            <div class="badge-name" id="myName">あなた</div>
+            <div class="badge-score"><span id="myCumulativeScore">0</span> <small>pts</small></div>
+          </div>
+          <div class="avatar my-avatar">🤠</div>
+        </div>
+
+        <div class="header-menu-btn-group">
+          <button id="returnToLobbyBtn" class="btn-icon-round" title="ホーム（ロビー）に戻る">🏠</button>
+          <button id="gameMenuBtn" class="btn-icon-round" title="設定メニュー">⚙️</button>
+        </div>
+      </header>
+
+      <!-- メッセージバナー (現在のターン・ステップ指示) -->
+      <div id="actionBanner" class="action-banner your-turn">
+        <span id="actionBannerIcon" class="banner-icon">👉</span>
+        <span id="actionBannerText" class="banner-text">あなたのターン：カードを1枚出してください</span>
+      </div>
+
+      <!-- メインゲーム盤面エリア -->
+      <main class="game-board">
+        
+        <!-- 相手の探検エリア (5色) -->
+        <section class="expeditions-container opp-expeditions" aria-label="相手の探検エリア">
+          <div class="expedition-column color-red" data-color="red" data-player="opp">
+            <div class="expedition-header">
+              <span class="exp-icon">🌋</span>
+              <span class="exp-score" id="oppScore_red">0</span>
+            </div>
+            <div class="cards-stack" id="oppCards_red"></div>
+          </div>
+          <div class="expedition-column color-blue" data-color="blue" data-player="opp">
+            <div class="expedition-header">
+              <span class="exp-icon">🌊</span>
+              <span class="exp-score" id="oppScore_blue">0</span>
+            </div>
+            <div class="cards-stack" id="oppCards_blue"></div>
+          </div>
+          <div class="expedition-column color-green" data-color="green" data-player="opp">
+            <div class="expedition-header">
+              <span class="exp-icon">🌿</span>
+              <span class="exp-score" id="oppScore_green">0</span>
+            </div>
+            <div class="cards-stack" id="oppCards_green"></div>
+          </div>
+          <div class="expedition-column color-yellow" data-color="yellow" data-player="opp">
+            <div class="expedition-header">
+              <span class="exp-icon">🏜️</span>
+              <span class="exp-score" id="oppScore_yellow">0</span>
+            </div>
+            <div class="cards-stack" id="oppCards_yellow"></div>
+          </div>
+          <div class="expedition-column color-white" data-color="white" data-player="opp">
+            <div class="expedition-header">
+              <span class="exp-icon">🏔️</span>
+              <span class="exp-score" id="oppScore_white">0</span>
+            </div>
+            <div class="cards-stack" id="oppCards_white"></div>
+          </div>
+        </section>
+
+        <!-- 中央エリア：共有捨て札 (5色) & 山札ドロー (計6カードスロット) -->
+        <section class="center-shared-area">
+          <div class="center-cards-grid" aria-label="捨て札置き場と山札">
+            <div class="discard-slot color-red" data-color="red" id="discard_red" title="赤の捨て札">
+              <div class="discard-bg-icon">🌋</div>
+              <div class="discard-card-host" id="discardTop_red"></div>
+              <span class="discard-count-badge" id="discardCount_red">0</span>
+            </div>
+            <div class="discard-slot color-blue" data-color="blue" id="discard_blue" title="青の捨て札">
+              <div class="discard-bg-icon">🌊</div>
+              <div class="discard-card-host" id="discardTop_blue"></div>
+              <span class="discard-count-badge" id="discardCount_blue">0</span>
+            </div>
+            <div class="discard-slot color-green" data-color="green" id="discard_green" title="緑の捨て札">
+              <div class="discard-bg-icon">🌿</div>
+              <div class="discard-card-host" id="discardTop_green"></div>
+              <span class="discard-count-badge" id="discardCount_green">0</span>
+            </div>
+            <div class="discard-slot color-yellow" data-color="yellow" id="discard_yellow" title="黄の捨て札">
+              <div class="discard-bg-icon">🏜️</div>
+              <div class="discard-card-host" id="discardTop_yellow"></div>
+              <span class="discard-count-badge" id="discardCount_yellow">0</span>
+            </div>
+            <div class="discard-slot color-white" data-color="white" id="discard_white" title="白の捨て札">
+              <div class="discard-bg-icon">🏔️</div>
+              <div class="discard-card-host" id="discardTop_white"></div>
+              <span class="discard-count-badge" id="discardCount_white">0</span>
+            </div>
+
+            <!-- 山札ドローカード -->
+            <div class="draw-deck-slot" id="drawDeckSlot" title="山札から1枚引く">
+              <div class="card-back deck-card">
+                <span class="deck-compass-icon">🧭</span>
+                <span class="deck-lbl">山札</span>
+                <span class="deck-num" id="deckInnerCount">44</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 自分の探検エリア (5色) -->
+        <section class="expeditions-container my-expeditions" aria-label="自分の探検エリア">
+          <div class="expedition-column color-red my-slot" data-color="red" data-player="me" id="myExp_red">
+            <div class="expedition-header">
+              <span class="exp-icon">🌋</span>
+              <span class="exp-score" id="myScore_red">0</span>
+              <span class="exp-multiplier" id="myMult_red"></span>
+            </div>
+            <div class="cards-stack" id="myCards_red"></div>
+            <div class="slot-drop-guide">ここに配置</div>
+          </div>
+          <div class="expedition-column color-blue my-slot" data-color="blue" data-player="me" id="myExp_blue">
+            <div class="expedition-header">
+              <span class="exp-icon">🌊</span>
+              <span class="exp-score" id="myScore_blue">0</span>
+              <span class="exp-multiplier" id="myMult_blue"></span>
+            </div>
+            <div class="cards-stack" id="myCards_blue"></div>
+            <div class="slot-drop-guide">ここに配置</div>
+          </div>
+          <div class="expedition-column color-green my-slot" data-color="green" data-player="me" id="myExp_green">
+            <div class="expedition-header">
+              <span class="exp-icon">🌿</span>
+              <span class="exp-score" id="myScore_green">0</span>
+              <span class="exp-multiplier" id="myMult_green"></span>
+            </div>
+            <div class="cards-stack" id="myCards_green"></div>
+            <div class="slot-drop-guide">ここに配置</div>
+          </div>
+          <div class="expedition-column color-yellow my-slot" data-color="yellow" data-player="me" id="myExp_yellow">
+            <div class="expedition-header">
+              <span class="exp-icon">🏜️</span>
+              <span class="exp-score" id="myScore_yellow">0</span>
+              <span class="exp-multiplier" id="myMult_yellow"></span>
+            </div>
+            <div class="cards-stack" id="myCards_yellow"></div>
+            <div class="slot-drop-guide">ここに配置</div>
+          </div>
+          <div class="expedition-column color-white my-slot" data-color="white" data-player="me" id="myExp_white">
+            <div class="expedition-header">
+              <span class="exp-icon">🏔️</span>
+              <span class="exp-score" id="myScore_white">0</span>
+              <span class="exp-multiplier" id="myMult_white"></span>
+            </div>
+            <div class="cards-stack" id="myCards_white"></div>
+            <div class="slot-drop-guide">ここに配置</div>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- 下部コントロール & 手札エリア -->
+      <footer class="game-footer">
+        
+        <!-- 自分の手札8枚 -->
+        <div class="hand-wrapper" style="position: relative;">
+          <div id="oppTurnOverlay" class="opp-turn-overlay hidden">
+            <span>⏳ 相手のターン中です（思考中...）</span>
+          </div>
+          <div class="hand-container" id="myHandContainer" aria-label="自分の手札">
+            <!-- JSで動的に手札カードを挿入 -->
+          </div>
+        </div>
+
+      </footer>
+
+    </div>
+
+    <!-- ========== ROUND OVER / GAME OVER MODAL ========== -->
+    <div id="resultModal" class="modal-overlay hidden">
+      <div class="modal-card result-card">
+        <div class="result-header" style="flex-shrink: 0;">
+          <div id="resultCrown" class="result-crown">👑</div>
+          <h2 id="resultTitle">ラウンド 1 終了</h2>
+          <p id="resultSubtitle" class="result-subtitle">得点集計結果</p>
+        </div>
+
+        <div class="modal-scroll-content result-scroll-content">
+          <div class="result-scores-comparison">
+            <div class="result-player-box my-result">
+              <span class="res-name" id="resMyName">あなた</span>
+              <span class="res-round-score" id="resMyRoundScore">+45</span>
+              <span class="res-total-score">累計: <b id="resMyTotalScore">45</b> pts</span>
+            </div>
+            <div class="res-vs">VS</div>
+            <div class="result-player-box opp-result">
+              <span class="res-name" id="resOppName">相手</span>
+              <span class="res-round-score" id="resOppRoundScore">+12</span>
+              <span class="res-total-score">累計: <b id="resOppTotalScore">12</b> pts</span>
+            </div>
+          </div>
+
+          <!-- ラウンドごとのスコア履歴サマリー (R1, R2, R3) -->
+          <div class="rounds-history-box" id="roundsHistoryBox" style="background: rgba(0,0,0,0.35); border-radius: 12px; padding: 10px;">
+            <h3 style="font-size: 0.8rem; font-weight: 800; color: var(--accent-cyan); margin-bottom: 6px;">全ラウンドの累計スコア</h3>
+            <div id="roundsSummaryRows" style="display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem;"></div>
+          </div>
+
+          <!-- 得点内訳詳細テーブル -->
+          <div class="score-breakdown-wrapper">
+            <h3 class="breakdown-title">今ラウンドの得点詳細（あなた）</h3>
+            <div class="breakdown-table" id="breakdownTable">
+              <!-- JSで動的生成 -->
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions" id="resultModalActions" style="flex-shrink: 0; padding-top: 6px;">
+          <button id="nextRoundBtn" class="btn btn-primary btn-large">次のラウンドへ進む ➔</button>
+          <button id="rematchBtn" class="btn btn-accent btn-large hidden">もう一度対戦する 🔄</button>
+          <button id="exitToLobbyBtn" class="btn btn-outline">ロビーに戻る</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== RULES MODAL ========== -->
+    <div id="rulesModal" class="modal-overlay hidden">
+      <div class="modal-card rules-card">
+        <div class="modal-header-bar">
+          <h2>📜 ルールと得点計算</h2>
+          <button class="modal-close-btn" data-close="rulesModal">✕</button>
+        </div>
+        <div class="modal-scroll-content">
+          <section class="rule-section">
+            <h3>🧭 ゲームの目的</h3>
+            <p>5つの探検エリア（火山・海洋・密林・砂漠・雪山）にカードを配置し、ライバルより高い得点を獲得することを目指します。</p>
+          </section>
+
+          <section class="rule-section">
+            <h3>🃏 カード構成（全60枚）</h3>
+            <ul>
+              <li>5色 × 各12枚 = 60枚</li>
+              <li>各色に<b>数字カード（2〜10の9枚）</b>と<b>投資カード（3枚）</b>があります。</li>
+            </ul>
+          </section>
+
+          <section class="rule-section">
+            <h3>🔄 ターンの流れ（必ず2ステップ）</h3>
+            <div class="step-card">
+              <b>STEP 1：カードを1枚出す</b>
+              <p>手札から1枚選び、<b>「自分の探検エリアに配置」</b>または<b>「対応する色の共有捨て札に捨てる」</b>を行います。</p>
+              <div class="rule-note">
+                <b>【配置ルール】</b><br>
+                ・投資カードは<b>数字カードを出す前</b>にのみ出せます（最大3枚）。<br>
+                ・数字カードは<b>前の数字より大きい数字（昇順）</b>でのみ置けます。<br>
+                ・数字は連続していなくても構いません（例: 2の次に6を置いてもOK）。
+              </div>
+            </div>
+            <div class="step-card">
+              <b>STEP 2：カードを1枚引く</b>
+              <p><b>「山札」</b>または<b>「5色の捨て札の一番上」</b>から1枚引きます。</p>
+              <div class="rule-note alert">
+                ⚠️ 自分が今STEP 1で捨てたばかりの捨て札を同じターンに引くことはできません。
+              </div>
+            </div>
+          </section>
+
+          <section class="rule-section">
+            <h3>🧮 得点計算（ここが勝負の鍵！）</h3>
+            <div class="score-formula-box">
+              <div class="formula-line"><b>基本得点</b> ＝ （数字カードの合計） − <b>20点</b></div>
+              <div class="formula-line"><b>エリア得点</b> ＝ 基本得点 × <b>（投資カード枚数 ＋ 1）</b></div>
+              <div class="formula-line"><b>ボーナス</b> ＝ 1エリアに<b>8枚以上</b>置くと <b>＋20点</b></div>
+              <div class="formula-summary">※ カードを1枚も置いていないエリアは <b>0点</b> です。</div>
+            </div>
+            <p class="example-text">
+              例：数字合計35点、投資2枚、合計8枚の場合<br>
+              <code>(35 − 20) × (2 + 1) ＋ 20 ＝ 15 × 3 ＋ 20 ＝ <b>65点</b></code>
+            </p>
+          </section>
+
+          <section class="rule-section">
+            <h3>🏁 終了条件</h3>
+            <p>山札がなくなった時点でラウンド終了です。標準ルールでは3ラウンドの累計得点で優勝を競います。</p>
+          </section>
+        </div>
+        <button class="btn btn-primary btn-full modal-close-btn" data-close="rulesModal">閉じる</button>
+      </div>
+    </div>
+
+    <!-- ========== TUTORIAL MODAL ========== -->
+    <div id="tutorialModal" class="modal-overlay hidden">
+      <div class="modal-card tutorial-card">
+        <div class="modal-header-bar">
+          <h2>🔰 初心者チュートリアル</h2>
+          <button class="modal-close-btn" data-close="tutorialModal">✕</button>
+        </div>
+        <div class="tutorial-step-view" id="tutorialStepView">
+          <!-- JSでステップ切り替え -->
+        </div>
+        <div class="tutorial-nav-buttons">
+          <button id="tutPrevBtn" class="btn btn-outline">前へ</button>
+          <div class="tut-dots" id="tutDots"></div>
+          <button id="tutNextBtn" class="btn btn-primary">次へ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== STATS & HISTORY MODAL ========== -->
+    <div id="statsModal" class="modal-overlay hidden">
+      <div class="modal-card stats-card">
+        <div class="modal-header-bar">
+          <h2>📊 戦績と対戦記録</h2>
+          <button class="modal-close-btn" data-close="statsModal">✕</button>
+        </div>
+        <div class="stats-summary-grid">
+          <div class="stat-box">
+            <span class="stat-num" id="statTotalMatches">0</span>
+            <span class="stat-lbl">総対戦数</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-num" id="statWinRate">0%</span>
+            <span class="stat-lbl">勝率</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-num" id="statHighScore">0</span>
+            <span class="stat-lbl">最高得点</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-num" id="statWins">0</span>
+            <span class="stat-lbl">勝利数</span>
+          </div>
+        </div>
+        <h3>最近の対戦履歴</h3>
+        <div class="history-list" id="historyList">
+          <div class="empty-history">まだ対戦記録がありません</div>
+        </div>
+        <button class="btn btn-outline btn-full modal-close-btn" data-close="statsModal">閉じる</button>
+      </div>
+    </div>
+
+    <!-- ========== MOBILE CONNECT QR MODAL ========== -->
+    <div id="mobileConnectModal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-header-bar">
+          <h2>📱 iPhone・スマホで接続</h2>
+          <button class="modal-close-btn" data-close="mobileConnectModal">✕</button>
+        </div>
+        <div class="modal-scroll-content" style="text-align: center; align-items: center;">
+          <p style="font-size: 0.85rem; color: var(--text-muted);">
+            iPhoneの「カメラ」アプリで以下のQRコードを読み取るか、SafariのアドレスバーにURLを入力してください。
+          </p>
+          <div id="mobileQrContainer" style="background: #fff; padding: 12px; border-radius: 12px; display: inline-block; margin: 10px 0;">
+            <img id="mobileQrImg" src="" alt="QR Code" style="width: 180px; height: 180px; display: block;">
+          </div>
+          <div style="background: rgba(0,0,0,0.4); padding: 8px 12px; border-radius: 8px; width: 100%;">
+            <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">接続URL</span>
+            <b id="mobileUrlDisplay" style="color: var(--accent-gold); font-size: 1rem; word-break: break-all;"></b>
+          </div>
+          <div class="rule-note alert" style="text-align: left; width: 100%;">
+            ⚠️ <b>接続のヒント</b><br>
+            ・iPhoneとPCが<b>同じWi-Fi（ルーター）</b>に接続されている必要があります。<br>
+            ・iPhoneのSafariで開く際は <code>localhost</code> ではなく、上記のIPアドレスURLを入力してください。
+          </div>
+        </div>
+        <button class="btn btn-primary btn-full modal-close-btn" data-close="mobileConnectModal">閉じる</button>
+      </div>
+    </div>
+
+    <!-- ========== SETTINGS MODAL ========== -->
+    <div id="settingsModal" class="modal-overlay hidden">
+      <div class="modal-card settings-card">
+        <div class="modal-header-bar">
+          <h2>⚙️ 設定</h2>
+          <button class="modal-close-btn" data-close="settingsModal">✕</button>
+        </div>
+        <div class="setting-name-section" style="background: rgba(0,0,0,0.3); padding: 10px 12px; border-radius: 12px; margin-bottom: 6px;">
+          <label for="settingsNameInput" style="font-size: 0.8rem; font-weight: 800; color: var(--text-muted); display: block; margin-bottom: 6px;">プレイヤー名</label>
+          <div class="input-with-random" style="display: flex; gap: 6px;">
+            <input type="text" id="settingsNameInput" maxlength="10" placeholder="探検家" value="探検家" style="flex: 1;">
+            <button id="settingsRandomNameBtn" class="btn-icon" title="ランダム名">🎲</button>
+            <button id="saveNameBtn" class="btn btn-primary btn-small" style="padding: 0 14px; font-weight: 900;">保存</button>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <span>効果音 (SE)</span>
+          <label class="switch">
+            <input type="checkbox" id="soundToggle" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="setting-item">
+          <span>スコア予想アシスト表示</span>
+          <label class="switch">
+            <input type="checkbox" id="scoreAssistToggle" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="setting-item">
+          <span>ゲーム中のログ表示</span>
+          <label class="switch">
+            <input type="checkbox" id="logDrawerToggle" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="modal-exit-group" style="margin-top: 8px;">
+          <button id="modalExitToLobbyBtn" class="btn btn-outline btn-full btn-small" style="color: #ff99a8;">🏠 ゲームをやめてホームに戻る</button>
+        </div>
+        <div class="danger-zone">
+          <button id="resetStatsBtn" class="btn btn-danger btn-small">戦績データをリセット</button>
+        </div>
+        <button class="btn btn-primary btn-full modal-close-btn" data-close="settingsModal">閉じる</button>
+      </div>
+    </div>
+
+    <!-- ========== PASS & PLAY TURN MODAL (手札隠し・交代カーテン) ========== -->
+    <div id="passTurnModal" class="modal-overlay hidden" style="background: rgba(13, 27, 42, 0.98);">
+      <div class="modal-card pass-turn-card" style="text-align: center; align-items: center; padding: 30px 20px;">
+        <div class="pass-turn-icon" style="font-size: 3rem; margin-bottom: 10px;">📱 ➔ 👤</div>
+        <h2 id="passTurnTitle" style="color: var(--accent-gold); font-size: 1.4rem;">プレイヤーのターン</h2>
+        <p class="pass-turn-subtext" style="color: var(--text-muted); font-size: 0.9rem; margin: 12px 0 20px 0; line-height: 1.5;">
+          端末を次のプレイヤーに渡してください。<br>
+          <span style="color: var(--accent-cyan); font-weight: 800;">※ 画面を見る前に手札は隠されています</span>
+        </p>
+        <button id="startPassedTurnBtn" class="btn btn-primary btn-large btn-full" style="justify-content: center;">
+          <span style="font-size: 1.1rem; font-weight: 900;">タップして手札を表示 ➔</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ========== GAME LOG DRAWER ========== -->
+    <div id="logDrawer" class="log-drawer hidden">
+      <div class="log-header">
+        <span>📜 プレイ履歴</span>
+        <button id="closeLogBtn" class="btn-icon-small">✕</button>
+      </div>
+      <div class="log-content" id="logContent"></div>
+    </div>
+
+    <!-- トースト通知 -->
+    <div id="toast" class="toast hidden"></div>
+
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
